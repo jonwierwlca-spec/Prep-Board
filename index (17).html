@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midday Prep Board</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300&display=swap');
+
+  :root {
+    --bg: #1a1a18;
+    --surface: #242420;
+    --card-bg: #2c2c28;
+    --card-border: #3a3a34;
+    --card-hover: #333330;
+    --accent: #e8c84a;
+    --accent-dim: #b89c2e;
+    --text-primary: #ffffff;
+    --text-secondary: #d8d4c8;
+    --text-muted: #a0a090;
+    --drag-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 2px var(--accent);
+    --card-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    --sidebar-w: 50vw;
+    --col-10: #e8c84a;
+    --col-11: #ffa500;
+    --col-12: #51cf66;
+    --col-1: #77a8ff;
+    --holdover-bg: #1e1e1c;
+    --holdover-border: #4a3a20;
+    --holdover-accent: #c49a3a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Source Serif 4', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 8px 20px 7px;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    flex-shrink: 0;
+    z-index: 200;
+  }
+
+  header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  header h1:hover { opacity: 0.8; }
+  header h1.editing { cursor: text; }
+
+  #boardNameInput {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--card-bg);
+    border: 1px solid var(--accent);
+    padding: 4px 8px;
+    border-radius: 3px;
+  }
+
+  header .subtitle {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hdr-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 5px 13px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .hdr-btn:hover { background: var(--card-hover); border-color: #5a5a50; color: var(--text-primary); }
+  .hdr-btn.accent { border-color: var(--accent-dim); color: var(--accent); }
+  .hdr-btn.accent:hover { background: #2e2e1e; border-color: var(--accent); }
+  .hdr-btn.danger { border-color: #804040; color: #e88; }
+  .hdr-btn.danger:hover { background: #3a2020; border-color: #c06060; color: #f99; }
+  .hdr-btn.ghost { border-color: transparent; color: var(--text-muted); background: transparent; }
+  .hdr-btn.ghost:hover { color: var(--text-primary); background: var(--card-bg); }
+
+  .save-status {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    transition: color 0.4s;
+  }
+  .save-status.saved { color: #6abf6a; }
+
+  /* ── SELECT BAR ── */
+  .select-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-left: 12px;
+  }
+  .select-bar.visible { display: flex; }
+  .select-count {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* ── MAIN AREA ── */
+  .main-area {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .board-wrap {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: margin-right 0.28s cubic-bezier(.4,0,.2,1);
+    padding: 0;
+  }
+
+  .board-wrap.sidebar-open {
+    margin-right: 50vw;
+  }
+
+  /* ── GRID LAYOUT ── */
+  .grid-container {
+    display: grid;
+    /* row-labels | 10 | 11 | 12 | 1 */
+    grid-template-columns: 38px 1fr 1fr 1fr 1fr;
+    gap: 0;
+    padding: 0 8px 0 8px;
+  }
+
+  /* Column headers */
+  .col-header {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 10px 0 6px;
+    border-bottom: 2px solid var(--card-border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  .col-header.corner { /* empty top-left */ }
+  .col-header.h-10 { color: var(--col-10); border-bottom-color: var(--col-10); }
+  .col-header.h-11 { color: var(--col-11); border-bottom-color: var(--col-11); }
+  .col-header.h-12 { color: var(--col-12); border-bottom-color: var(--col-12); }
+  .col-header.h-1  { color: var(--col-1);  border-bottom-color: var(--col-1);  }
+
+  /* Row labels */
+  .row-label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    writing-mode: horizontal-tb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0;
+    border-right: 1px solid var(--card-border);
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    box-shadow: var(--card-shadow);
+    cursor: pointer;
+    user-select: none;
+    transition: box-shadow 0.15s, background 0.15s, border-color 0.15s, transform 0.1s;
+    position: relative;
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    margin: 4px;
+  }
+
+  .card:hover { background: var(--card-hover); border-color: #4a4a44; }
+  .card.active { border-color: var(--accent); background: #2d2d22; }
+  .card.active .card-top-bar { background: var(--accent) !important; }
+  .card.dragging { cursor: grabbing; box-shadow: var(--drag-shadow); transform: rotate(1.5deg) scale(1.04); z-index: 9999; }
+  .card.drag-over { border-color: var(--accent-dim); background: #2e2e24; }
+  .card.selected { border-color: var(--accent-dim); background: #2a2a20; }
+  .card.selected .card-top-bar { background: var(--accent-dim); }
+
+  .card-top-bar {
+    height: 3px;
+    border-radius: 4px 4px 0 0;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .card:hover .card-top-bar { background: var(--accent-dim) !important; }
+  .card.dragging .card-top-bar { background: var(--accent) !important; }
+
+  /* Color-code top bars by column */
+  .card[data-col="0"] .card-top-bar { background: var(--col-10); opacity: 0.4; }
+  .card[data-col="1"] .card-top-bar { background: var(--col-11); opacity: 0.4; }
+  .card[data-col="2"] .card-top-bar { background: var(--col-12); opacity: 0.4; }
+  .card[data-col="3"] .card-top-bar { background: var(--col-1);  opacity: 0.4; }
+  .card:hover .card-top-bar,
+  .card.active .card-top-bar,
+  .card.dragging .card-top-bar { opacity: 1 !important; }
+
+  .card-num {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.48rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  .card-headline-label {
+    padding: 4px 22px 3px 7px;
+    border-bottom: 1px solid var(--card-border);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 20px;
+    line-height: 1.3;
+  }
+
+  .card[data-col="0"] .card-headline-label { color: var(--col-10); }
+  .card[data-col="1"] .card-headline-label { color: var(--col-11); }
+  .card[data-col="2"] .card-headline-label { color: var(--col-12); }
+  .card[data-col="3"] .card-headline-label { color: var(--col-1);  }
+  .card-headline-label.empty { color: var(--text-muted); font-weight: 400; }
+
+  .card-preview {
+    flex: 1;
+    padding: 4px 7px 5px;
+    font-size: 0.53rem;
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--text-muted);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    pointer-events: none;
+    white-space: pre-wrap;
+  }
+
+  .card-clear {
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: var(--text-muted);
+    font-size: 0.55rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
+    z-index: 10;
+    pointer-events: none;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .card:hover .card-clear.has-content { opacity: 1; pointer-events: auto; }
+  .card-clear:hover { background: #4a2020; border-color: #c06060; color: #e88; }
+
+  .card-checkbox {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 16px;
+    height: 16px;
+    background: var(--card-bg);
+    border: 1.5px solid var(--text-muted);
+    border-radius: 3px;
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .card:hover .card-checkbox,
+  .card.selected .card-checkbox,
+  .grid-container.select-mode .card-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .card-checkbox:hover { border-color: var(--accent); background: #2e2e1e; }
+  .card-checkbox::after {
+    content: '';
+    display: none;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 1.5px;
+  }
+  .card.selected .card-checkbox { border-color: var(--accent); background: #2e2e1e; }
+  .card.selected .card-checkbox::after { display: block; }
+
+  /* ── HOLDOVER BIN ── */
+  .holdover-section {
+    border-top: 2px solid var(--holdover-border);
+    background: var(--holdover-bg);
+    padding: 10px 12px 14px;
+    margin-top: 4px;
+  }
+
+  .holdover-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .holdover-header h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--holdover-accent);
+  }
+
+  .holdover-header .holdover-count {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+  }
+
+  .holdover-header .holdover-toggle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+  }
+
+  .holdover-header .holdover-toggle.collapsed {
+    transform: rotate(-90deg);
+  }
+
+  .holdover-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+  }
+
+  .holdover-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    min-height: 60px;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    overflow: hidden;
+  }
+
+  .holdover-grid.collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .holdover-drop-zone {
+    border: 1px dashed var(--holdover-border);
+    border-radius: 4px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    grid-column: 1 / -1;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .holdover-drop-zone.drag-over {
+    border-color: var(--holdover-accent);
+    background: rgba(196, 154, 58, 0.08);
+  }
+
+  .holdover-drop-zone .drop-hint {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+
+  /* Holdover cards */
+  .holdover-grid .card {
+    min-height: 70px;
+    margin: 0;
+  }
+
+  .holdover-grid .card .card-top-bar {
+    background: var(--holdover-accent);
+    opacity: 0.4;
+  }
+
+  .holdover-grid .card:hover .card-top-bar {
+    opacity: 1 !important;
+  }
+
+  .holdover-grid .card .card-headline-label {
+    color: var(--holdover-accent);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 50vw;
+    min-width: 50vw;
+    height: 100vh;
+    background: #1c1c1a;
+    border-left: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 300;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+    box-shadow: -10px 0 50px rgba(0,0,0,0.55);
+  }
+
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar-header {
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  .sb-card-num {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .sb-source-label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.55rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .sb-source-label.board-source {
+    color: var(--accent);
+    background: rgba(232,200,74,0.1);
+    border: 1px solid rgba(232,200,74,0.2);
+  }
+  .sb-source-label.holdover-source {
+    color: var(--holdover-accent);
+    background: rgba(196,154,58,0.1);
+    border: 1px solid rgba(196,154,58,0.2);
+  }
+
+  .sb-headline {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    caret-color: var(--accent);
+  }
+  .sb-headline::placeholder { color: var(--text-muted); font-weight: 400; }
+
+  .sb-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .sb-close:hover { color: var(--text-primary); background: var(--card-border); }
+
+  .sb-clear-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-muted);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .sb-clear-btn:hover { background: #3a2020; border-color: #c06060; color: #e88; }
+
+  .sb-body-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px 10px;
+  }
+
+  .sb-textarea {
+    flex: 1;
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 0.84rem;
+    font-weight: 300;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    caret-color: var(--text-primary);
+  }
+  .sb-textarea::placeholder { color: var(--text-muted); font-style: italic; }
+
+  .sb-nav {
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .nav-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .nav-btn:hover { background: var(--card-hover); border-color: #5a5a50; color: var(--text-primary); }
+
+  .nav-label {
+    flex: 1;
+    text-align: center;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+  }
+
+  /* Move to holdover button in sidebar */
+  .sb-move-holdover {
+    background: var(--card-bg);
+    border: 1px solid var(--holdover-border);
+    color: var(--holdover-accent);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .sb-move-holdover:hover { background: #2e2a1e; border-color: var(--holdover-accent); }
+
+  @media (max-width: 1100px) {
+    :root { --sidebar-w: 60vw; }
+    .sidebar { width: 60vw; min-width: 60vw; }
+    .board-wrap.sidebar-open { margin-right: 60vw; }
+  }
+  @media (max-width: 700px) {
+    .grid-container { grid-template-columns: 28px 1fr 1fr; }
+    :root { --sidebar-w: 100vw; }
+    .sidebar { width: 100vw; min-width: 100vw; }
+    .board-wrap.sidebar-open { margin-right: 0; }
+    .holdover-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <h1 id="boardName" title="Click to edit">Midday Prep Board</h1>
+    <span class="subtitle">4×4 · click to open · drag to reorder</span>
+    <div class="select-bar" id="selectBar">
+      <span class="select-count" id="selectCount">0 selected</span>
+      <button class="hdr-btn danger" id="btnClearSelected">Clear Selected</button>
+      <button class="hdr-btn ghost" id="btnDeselectAll">Deselect</button>
+    </div>
+    <div class="header-actions">
+      <span class="save-status" id="saveStatus"></span>
+      <button class="hdr-btn" id="btnLoad" title="Load a saved .json file">Load File</button>
+      <input type="file" id="fileInput" accept=".json" style="display:none" />
+      <button class="hdr-btn accent" id="btnSave" title="Save to file">&#x2b07; Save</button>
+    </div>
+  </header>
+
+  <div class="main-area">
+    <div class="board-wrap" id="boardWrap">
+      <!-- 4x4 GRID -->
+      <div class="grid-container" id="gridContainer">
+        <!-- Column headers: built by JS -->
+      </div>
+
+      <!-- HOLDOVER BIN -->
+      <div class="holdover-section" id="holdoverSection">
+        <div class="holdover-header" id="holdoverHeader">
+          <span class="holdover-toggle" id="holdoverToggle">▼</span>
+          <h2>Holdover</h2>
+          <span class="holdover-count" id="holdoverCount">0 topics</span>
+          <div class="holdover-actions">
+            <button class="hdr-btn danger" id="btnClearHoldover" style="font-size:0.58rem;padding:3px 9px;">Clear All</button>
+          </div>
+        </div>
+        <div class="holdover-grid" id="holdoverGrid">
+          <div class="holdover-drop-zone" id="holdoverDropZone">
+            <span class="drop-hint">Drag cards here to save for tomorrow</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sb-card-num" id="sbNum">10A</span>
+        <span class="sb-source-label board-source" id="sbSourceLabel">BOARD</span>
+        <input class="sb-headline" id="sbHeadline" type="text" placeholder="HEADLINE" spellcheck="false" />
+        <button class="sb-move-holdover" id="sbMoveHoldover" title="Move to holdover bin">→ Holdover</button>
+        <button class="sb-clear-btn" id="sbClearCard" title="Clear this card">Clear</button>
+        <button class="sb-close" id="sbClose" title="Close (Esc)">✕</button>
+      </div>
+      <div class="sb-body-wrap">
+        <textarea class="sb-textarea" id="sbBody" placeholder="Paste your full story prep here…" spellcheck="false"></textarea>
+      </div>
+      <div class="sb-nav">
+        <button class="nav-btn" id="navPrev">← Prev</button>
+        <span class="nav-label" id="navLabel">10A</span>
+        <button class="nav-btn" id="navNext">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── DOM refs ──
+  const gridContainer = document.getElementById('gridContainer');
+  const boardWrap     = document.getElementById('boardWrap');
+  const sidebar       = document.getElementById('sidebar');
+  const sbNum         = document.getElementById('sbNum');
+  const sbSourceLabel = document.getElementById('sbSourceLabel');
+  const sbHeadline    = document.getElementById('sbHeadline');
+  const sbBody        = document.getElementById('sbBody');
+  const sbClose       = document.getElementById('sbClose');
+  const sbClearCard   = document.getElementById('sbClearCard');
+  const sbMoveHoldover= document.getElementById('sbMoveHoldover');
+  const navPrev       = document.getElementById('navPrev');
+  const navNext       = document.getElementById('navNext');
+  const navLabel      = document.getElementById('navLabel');
+  const saveStatus    = document.getElementById('saveStatus');
+  const btnSave       = document.getElementById('btnSave');
+  const btnLoad       = document.getElementById('btnLoad');
+  const fileInput     = document.getElementById('fileInput');
+  const selectBar     = document.getElementById('selectBar');
+  const selectCount   = document.getElementById('selectCount');
+  const btnClearSelected = document.getElementById('btnClearSelected');
+  const btnDeselectAll   = document.getElementById('btnDeselectAll');
+  const holdoverGrid     = document.getElementById('holdoverGrid');
+  const holdoverDropZone = document.getElementById('holdoverDropZone');
+  const holdoverCount    = document.getElementById('holdoverCount');
+  const holdoverHeader   = document.getElementById('holdoverHeader');
+  const holdoverToggle   = document.getElementById('holdoverToggle');
+  const btnClearHoldover = document.getElementById('btnClearHoldover');
+
+  // ── Constants ──
+  const ROWS = 4;
+  const COLS = 4;
+  const N = ROWS * COLS; // 16 board cards
+  const COL_HOURS = ['10', '11', '12', '1'];
+  const ROW_LETTERS = ['A', 'B', 'C', 'D'];
+  const STORAGE_KEY = 'midday-prep-board-v2';
+  const HOLDOVER_KEY = 'midday-holdover-v1';
+
+  // ── State ──
+  let activeIdx = null;        // index into board data (0-15) or null
+  let activeHoldoverIdx = null; // index into holdover data or null
+  let dragSrc = null;
+  let dragSrcType = null; // 'board' or 'holdover'
+  let autoSaveTimer = null;
+  const selected = new Set();
+
+  // Data stores
+  const data = Array.from({ length: N }, () => ({ headline: '', body: '' }));
+  let holdoverData = []; // dynamic length
+
+  // ── Firebase ──
+  let db = null;
+  const DB_PATH = 'prep-board-v2/cards';
+  const DB_HOLDOVER_PATH = 'prep-board-v2/holdover';
+
+  if (typeof firebase !== 'undefined') {
+    const firebaseConfig = {
+      apiKey: "AIzaSyD8j5Gn3yLRJO9Y4sRcYr_otX3TtLvA0Bk",
+      authDomain: "midday-prep-sheet.firebaseapp.com",
+      databaseURL: "https://midday-prep-sheet-default-rtdb.firebaseio.com",
+      projectId: "midday-prep-sheet",
+      storageBucket: "midday-prep-sheet.firebasestorage.app",
+      messagingSenderId: "731020508567",
+      appId: "1:731020508567:web:1fc2ae980dc5f8e475d8d2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+  }
+
+  let firebaseTimer = null;
+  function saveToFirebase() {
+    if (!db) return;
+    flushSidebar();
+    db.ref(DB_PATH).set(data).then(() => {
+      showStatus('SYNCED');
+    }).catch(() => showStatus('SYNC FAILED', false));
+    db.ref(DB_HOLDOVER_PATH).set(holdoverData).catch(() => {});
+  }
+
+  function scheduleFirebaseSync() {
+    clearTimeout(firebaseTimer);
+    firebaseTimer = setTimeout(saveToFirebase, 1500);
+  }
+
+  // ── Build grid ──
+  function getSlotLabel(row, col) {
+    return `${COL_HOURS[col]}${ROW_LETTERS[row]}`;
+  }
+
+  function cardIndex(row, col) {
+    // Row-major: row 0 = cards 0-3, row 1 = cards 4-7, etc.
+    return row * COLS + col;
+  }
+
+  // Column headers
+  const corner = document.createElement('div');
+  corner.className = 'col-header corner';
+  gridContainer.appendChild(corner);
+
+  COL_HOURS.forEach((h, ci) => {
+    const ch = document.createElement('div');
+    ch.className = `col-header h-${h}`;
+    ch.textContent = `${h}:00`;
+    gridContainer.appendChild(ch);
+  });
+
+  // Rows
+  for (let r = 0; r < ROWS; r++) {
+    // Row label
+    const rl = document.createElement('div');
+    rl.className = 'row-label';
+    rl.textContent = ROW_LETTERS[r];
+    gridContainer.appendChild(rl);
+
+    // Cards
+    for (let c = 0; c < COLS; c++) {
+      const idx = cardIndex(r, c);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.draggable = true;
+      card.dataset.idx = idx;
+      card.dataset.col = c;
+      card.dataset.row = r;
+      card.dataset.source = 'board';
+      card.innerHTML = `
+        <div class="card-checkbox" title="Select"></div>
+        <button class="card-clear" title="Clear">✕</button>
+        <div class="card-top-bar"></div>
+        <span class="card-num">${getSlotLabel(r, c)}</span>
+        <div class="card-headline-label empty">HEADLINE</div>
+        <div class="card-preview"></div>
+      `;
+      gridContainer.appendChild(card);
+    }
+  }
+
+  // ── Card helpers ──
+  function getBoardCard(i) {
+    return gridContainer.querySelector(`.card[data-idx="${i}"][data-source="board"]`);
+  }
+
+  function refreshBoardCard(i) {
+    const card = getBoardCard(i);
+    if (!card) return;
+    const label = card.querySelector('.card-headline-label');
+    const preview = card.querySelector('.card-preview');
+    const clearBtn = card.querySelector('.card-clear');
+    label.textContent = data[i].headline || 'HEADLINE';
+    label.classList.toggle('empty', !data[i].headline);
+    preview.textContent = data[i].body;
+    const hasContent = !!(data[i].headline || data[i].body);
+    clearBtn.classList.toggle('has-content', hasContent);
+  }
+
+  // ── Holdover rendering ──
+  function renderHoldover() {
+    holdoverGrid.innerHTML = '';
+
+    if (holdoverData.length === 0) {
+      const dz = document.createElement('div');
+      dz.className = 'holdover-drop-zone';
+      dz.id = 'holdoverDropZone';
+      dz.innerHTML = '<span class="drop-hint">Drag cards here to save for tomorrow</span>';
+      holdoverGrid.appendChild(dz);
+      setupHoldoverDropZone();
+    } else {
+      holdoverData.forEach((item, hi) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.draggable = true;
+        card.dataset.holdoverIdx = hi;
+        card.dataset.source = 'holdover';
+        card.innerHTML = `
+          <button class="card-clear has-content" style="opacity:0" title="Remove">✕</button>
+          <div class="card-top-bar"></div>
+          <div class="card-headline-label ${item.headline ? '' : 'empty'}">${item.headline || 'HEADLINE'}</div>
+          <div class="card-preview">${item.body || ''}</div>
+        `;
+        holdoverGrid.appendChild(card);
+      });
+
+      // Extra drop zone at end
+      const dz = document.createElement('div');
+      dz.className = 'holdover-drop-zone';
+      dz.id = 'holdoverDropZone';
+      dz.style.minHeight = '50px';
+      dz.innerHTML = '<span class="drop-hint">+ Drop here</span>';
+      holdoverGrid.appendChild(dz);
+      setupHoldoverDropZone();
+    }
+
+    holdoverCount.textContent = `${holdoverData.length} topic${holdoverData.length !== 1 ? 's' : ''}`;
+  }
+
+  function setupHoldoverDropZone() {
+    const dz = document.getElementById('holdoverDropZone');
+    if (!dz) return;
+
+    dz.addEventListener('dragover', e => {
+      e.preventDefault();
+      dz.classList.add('drag-over');
+    });
+    dz.addEventListener('dragleave', () => {
+      dz.classList.remove('drag-over');
+    });
+    dz.addEventListener('drop', e => {
+      e.preventDefault();
+      dz.classList.remove('drag-over');
+      handleDropToHoldover();
+    });
+  }
+
+  function handleDropToHoldover() {
+    if (!dragSrc) return;
+    if (dragSrcType === 'board') {
+      const idx = parseInt(dragSrc.dataset.idx);
+      if (!data[idx].headline && !data[idx].body) return;
+      holdoverData.push({ headline: data[idx].headline, body: data[idx].body });
+      data[idx].headline = '';
+      data[idx].body = '';
+      refreshBoardCard(idx);
+      if (activeIdx === idx) closeSidebar();
+    } else if (dragSrcType === 'holdover') {
+      // Already in holdover — reorder (no-op for now)
+    }
+    renderHoldover();
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+    showStatus('MOVED TO HOLDOVER');
+  }
+
+  // ── Sidebar ──
+  function flushSidebar() {
+    if (activeIdx !== null) {
+      data[activeIdx].headline = sbHeadline.value;
+      data[activeIdx].body = sbBody.value;
+      refreshBoardCard(activeIdx);
+    } else if (activeHoldoverIdx !== null && holdoverData[activeHoldoverIdx]) {
+      holdoverData[activeHoldoverIdx].headline = sbHeadline.value;
+      holdoverData[activeHoldoverIdx].body = sbBody.value;
+      renderHoldover();
+    }
+  }
+
+  function openBoardCard(i) {
+    flushSidebar();
+    activeIdx = i;
+    activeHoldoverIdx = null;
+    const r = Math.floor(i / COLS);
+    const c = i % COLS;
+    const label = getSlotLabel(r, c);
+    sbNum.textContent = label;
+    sbSourceLabel.textContent = 'BOARD';
+    sbSourceLabel.className = 'sb-source-label board-source';
+    sbHeadline.value = data[i].headline;
+    sbBody.value = data[i].body;
+    navLabel.textContent = label;
+
+    document.querySelectorAll('.card.active').forEach(el => el.classList.remove('active'));
+    const card = getBoardCard(i);
+    if (card) card.classList.add('active');
+    sidebar.classList.add('open');
+    boardWrap.classList.add('sidebar-open');
+    const sbBodyWrap = document.querySelector('.sb-body-wrap');
+    sbBodyWrap.scrollTop = 0;
+    sbBody.focus();
+    sbBody.setSelectionRange(0, 0);
+
+    // Show/hide holdover button
+    sbMoveHoldover.style.display = '';
+  }
+
+  function openHoldoverCard(hi) {
+    flushSidebar();
+    activeHoldoverIdx = hi;
+    activeIdx = null;
+    sbNum.textContent = `H${hi + 1}`;
+    sbSourceLabel.textContent = 'HOLDOVER';
+    sbSourceLabel.className = 'sb-source-label holdover-source';
+    sbHeadline.value = holdoverData[hi].headline;
+    sbBody.value = holdoverData[hi].body;
+    navLabel.textContent = `Holdover ${hi + 1} of ${holdoverData.length}`;
+
+    document.querySelectorAll('.card.active').forEach(el => el.classList.remove('active'));
+    const cards = holdoverGrid.querySelectorAll('.card');
+    if (cards[hi]) cards[hi].classList.add('active');
+    sidebar.classList.add('open');
+    boardWrap.classList.add('sidebar-open');
+    sbBody.focus();
+    sbBody.setSelectionRange(0, 0);
+
+    // Hide holdover move button (already there)
+    sbMoveHoldover.style.display = 'none';
+  }
+
+  function closeSidebar() {
+    flushSidebar();
+    sidebar.classList.remove('open');
+    boardWrap.classList.remove('sidebar-open');
+    document.querySelectorAll('.card.active').forEach(el => el.classList.remove('active'));
+    activeIdx = null;
+    activeHoldoverIdx = null;
+  }
+
+  sbClose.addEventListener('click', closeSidebar);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
+  // Nav buttons
+  navPrev.addEventListener('click', () => {
+    if (activeIdx !== null) {
+      openBoardCard((activeIdx - 1 + N) % N);
+    } else if (activeHoldoverIdx !== null && holdoverData.length > 0) {
+      openHoldoverCard((activeHoldoverIdx - 1 + holdoverData.length) % holdoverData.length);
+    }
+  });
+  navNext.addEventListener('click', () => {
+    if (activeIdx !== null) {
+      openBoardCard((activeIdx + 1) % N);
+    } else if (activeHoldoverIdx !== null && holdoverData.length > 0) {
+      openHoldoverCard((activeHoldoverIdx + 1) % holdoverData.length);
+    }
+  });
+
+  // Live sync sidebar
+  sbHeadline.addEventListener('input', () => {
+    if (activeIdx !== null) {
+      data[activeIdx].headline = sbHeadline.value;
+      refreshBoardCard(activeIdx);
+    } else if (activeHoldoverIdx !== null && holdoverData[activeHoldoverIdx]) {
+      holdoverData[activeHoldoverIdx].headline = sbHeadline.value;
+      renderHoldover();
+    }
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+  });
+
+  sbBody.addEventListener('input', () => {
+    if (activeIdx !== null) {
+      data[activeIdx].body = sbBody.value;
+      refreshBoardCard(activeIdx);
+    } else if (activeHoldoverIdx !== null && holdoverData[activeHoldoverIdx]) {
+      holdoverData[activeHoldoverIdx].body = sbBody.value;
+      renderHoldover();
+    }
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+  });
+
+  // Move to holdover from sidebar
+  sbMoveHoldover.addEventListener('click', () => {
+    if (activeIdx === null) return;
+    const idx = activeIdx;
+    if (!data[idx].headline && !data[idx].body) return;
+    holdoverData.push({ headline: data[idx].headline, body: data[idx].body });
+    data[idx].headline = '';
+    data[idx].body = '';
+    refreshBoardCard(idx);
+    closeSidebar();
+    renderHoldover();
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+    showStatus('MOVED TO HOLDOVER');
+  });
+
+  // Clear card from sidebar
+  sbClearCard.addEventListener('click', () => {
+    if (activeIdx !== null) {
+      clearBoardCard(activeIdx);
+    } else if (activeHoldoverIdx !== null) {
+      holdoverData.splice(activeHoldoverIdx, 1);
+      closeSidebar();
+      renderHoldover();
+      scheduleAutoSave();
+      scheduleFirebaseSync();
+      showStatus('HOLDOVER REMOVED');
+    }
+  });
+
+  // ── Board clicks ──
+  gridContainer.addEventListener('click', e => {
+    if (e.target.closest('.card-clear')) {
+      e.stopPropagation();
+      const card = e.target.closest('.card');
+      if (card.dataset.source === 'board') {
+        clearBoardCard(parseInt(card.dataset.idx));
+      }
+      return;
+    }
+    if (e.target.closest('.card-checkbox')) {
+      e.stopPropagation();
+      const card = e.target.closest('.card');
+      if (card.dataset.source === 'board') {
+        toggleSelect(parseInt(card.dataset.idx));
+      }
+      return;
+    }
+    const card = e.target.closest('.card');
+    if (!card) return;
+    if (card.dataset.source === 'board') {
+      const i = parseInt(card.dataset.idx);
+      if (activeIdx === i) closeSidebar();
+      else openBoardCard(i);
+    }
+  });
+
+  // Holdover clicks
+  holdoverGrid.addEventListener('click', e => {
+    if (e.target.closest('.card-clear')) {
+      e.stopPropagation();
+      const card = e.target.closest('.card');
+      const hi = parseInt(card.dataset.holdoverIdx);
+      holdoverData.splice(hi, 1);
+      if (activeHoldoverIdx === hi) closeSidebar();
+      renderHoldover();
+      scheduleAutoSave();
+      scheduleFirebaseSync();
+      showStatus('HOLDOVER REMOVED');
+      return;
+    }
+    const card = e.target.closest('.card');
+    if (!card || card.dataset.source !== 'holdover') return;
+    const hi = parseInt(card.dataset.holdoverIdx);
+    if (activeHoldoverIdx === hi) closeSidebar();
+    else openHoldoverCard(hi);
+  });
+
+  function clearBoardCard(i) {
+    data[i].headline = '';
+    data[i].body = '';
+    refreshBoardCard(i);
+    if (activeIdx === i) {
+      sbHeadline.value = '';
+      sbBody.value = '';
+    }
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+    showStatus('CARD CLEARED');
+  }
+
+  // ── Multi-select ──
+  function toggleSelect(i) {
+    const card = getBoardCard(i);
+    if (selected.has(i)) {
+      selected.delete(i);
+      card.classList.remove('selected');
+    } else {
+      selected.add(i);
+      card.classList.add('selected');
+    }
+    updateSelectBar();
+  }
+
+  function updateSelectBar() {
+    const count = selected.size;
+    selectBar.classList.toggle('visible', count > 0);
+    selectCount.textContent = `${count} selected`;
+    gridContainer.classList.toggle('select-mode', count > 0);
+  }
+
+  function deselectAll() {
+    selected.forEach(i => {
+      const c = getBoardCard(i);
+      if (c) c.classList.remove('selected');
+    });
+    selected.clear();
+    updateSelectBar();
+  }
+
+  btnClearSelected.addEventListener('click', () => {
+    if (selected.size === 0) return;
+    const count = selected.size;
+    if (!confirm(`Clear ${count} selected card${count > 1 ? 's' : ''}?`)) return;
+    selected.forEach(i => {
+      data[i].headline = '';
+      data[i].body = '';
+      refreshBoardCard(i);
+      if (activeIdx === i) { sbHeadline.value = ''; sbBody.value = ''; }
+    });
+    deselectAll();
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+    showStatus(`${count} CLEARED`);
+  });
+
+  btnDeselectAll.addEventListener('click', deselectAll);
+
+  // ── Holdover toggle ──
+  let holdoverCollapsed = false;
+  holdoverHeader.addEventListener('click', e => {
+    if (e.target.closest('.hdr-btn')) return;
+    holdoverCollapsed = !holdoverCollapsed;
+    holdoverGrid.classList.toggle('collapsed', holdoverCollapsed);
+    holdoverToggle.classList.toggle('collapsed', holdoverCollapsed);
+  });
+
+  btnClearHoldover.addEventListener('click', e => {
+    e.stopPropagation();
+    if (holdoverData.length === 0) return;
+    if (!confirm(`Clear all ${holdoverData.length} holdover topics?`)) return;
+    holdoverData = [];
+    if (activeHoldoverIdx !== null) closeSidebar();
+    renderHoldover();
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+    showStatus('HOLDOVER CLEARED');
+  });
+
+  // ── Drag & Drop ──
+  gridContainer.addEventListener('dragstart', e => {
+    const card = e.target.closest('.card');
+    if (!card) return;
+    dragSrc = card;
+    dragSrcType = 'board';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    requestAnimationFrame(() => card.classList.add('dragging'));
+  });
+
+  holdoverGrid.addEventListener('dragstart', e => {
+    const card = e.target.closest('.card');
+    if (!card || card.dataset.source !== 'holdover') return;
+    dragSrc = card;
+    dragSrcType = 'holdover';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    requestAnimationFrame(() => card.classList.add('dragging'));
+  });
+
+  document.addEventListener('dragend', e => {
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragSrc = null;
+    dragSrcType = null;
+  });
+
+  // Board dragover/drop
+  gridContainer.addEventListener('dragover', e => {
+    const target = e.target.closest('.card');
+    if (!target || target === dragSrc) return;
+    e.preventDefault();
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+  });
+
+  gridContainer.addEventListener('dragleave', e => {
+    const target = e.target.closest('.card');
+    if (target) target.classList.remove('drag-over');
+  });
+
+  gridContainer.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('.card');
+    if (!target || !dragSrc) return;
+    target.classList.remove('drag-over');
+
+    if (target.dataset.source !== 'board') return;
+    const ti = parseInt(target.dataset.idx);
+
+    if (dragSrcType === 'board') {
+      // Swap board cards
+      const si = parseInt(dragSrc.dataset.idx);
+      if (si === ti) return;
+      flushSidebar();
+      [data[si], data[ti]] = [data[ti], data[si]];
+      refreshBoardCard(si);
+      refreshBoardCard(ti);
+      if (activeIdx === si) openBoardCard(ti);
+      else if (activeIdx === ti) openBoardCard(si);
+    } else if (dragSrcType === 'holdover') {
+      // Move holdover card to board slot
+      const hi = parseInt(dragSrc.dataset.holdoverIdx);
+      const holdoverItem = holdoverData[hi];
+      // Swap: if board slot has content, move it to holdover
+      if (data[ti].headline || data[ti].body) {
+        holdoverData[hi] = { headline: data[ti].headline, body: data[ti].body };
+      } else {
+        holdoverData.splice(hi, 1);
+      }
+      data[ti].headline = holdoverItem.headline;
+      data[ti].body = holdoverItem.body;
+      refreshBoardCard(ti);
+      if (activeHoldoverIdx === hi) closeSidebar();
+      renderHoldover();
+    }
+
+    scheduleAutoSave();
+    scheduleFirebaseSync();
+  });
+
+  // ── Board Name Editing ──
+  const boardName = document.getElementById('boardName');
+  const BOARD_NAME_KEY = 'boardName-v2';
+  const savedBN = localStorage.getItem(BOARD_NAME_KEY);
+  if (savedBN) boardName.textContent = savedBN;
+
+  boardName.addEventListener('click', e => {
+    e.stopPropagation();
+    if (boardName.classList.contains('editing')) return;
+    const currentText = boardName.textContent;
+    boardName.innerHTML = `<input type="text" id="boardNameInput" value="${currentText}" />`;
+    boardName.classList.add('editing');
+    const input = document.getElementById('boardNameInput');
+    input.focus();
+    input.select();
+    const saveName = () => {
+      const newName = input.value.trim() || 'Board';
+      boardName.textContent = newName;
+      boardName.classList.remove('editing');
+      localStorage.setItem(BOARD_NAME_KEY, newName);
+    };
+    input.addEventListener('blur', saveName);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveName();
+      if (e.key === 'Escape') { boardName.textContent = currentText; boardName.classList.remove('editing'); }
+    });
+  });
+
+  // ── Save / Load ──
+  function showStatus(msg, success = true) {
+    saveStatus.textContent = msg;
+    saveStatus.classList.toggle('saved', success);
+    saveStatus.style.color = success ? '#6abf6a' : '#c06060';
+    setTimeout(() => { saveStatus.textContent = ''; saveStatus.style.color = ''; }, 2200);
+  }
+
+  function serializeData() {
+    flushSidebar();
+    return JSON.stringify({
+      v: 2,
+      boardName: boardName.textContent,
+      cards: data,
+      holdover: holdoverData
+    }, null, 2);
+  }
+
+  function loadFromSerialized(parsed) {
+    const arr = parsed.cards || parsed;
+    const name = parsed.boardName;
+    if (name) {
+      boardName.textContent = name;
+      localStorage.setItem(BOARD_NAME_KEY, name);
+    }
+
+    if (Array.isArray(arr)) {
+      for (let i = 0; i < N; i++) {
+        data[i].headline = (arr[i] && arr[i].headline) || '';
+        data[i].body     = (arr[i] && arr[i].body)     || '';
+        refreshBoardCard(i);
+      }
+    }
+
+    if (parsed.holdover && Array.isArray(parsed.holdover)) {
+      holdoverData = parsed.holdover.filter(h => h.headline || h.body);
+    }
+    renderHoldover();
+
+    if (activeIdx !== null) {
+      sbHeadline.value = data[activeIdx].headline;
+      sbBody.value     = data[activeIdx].body;
+    }
+  }
+
+  function scheduleAutoSave() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+      localStorage.setItem(STORAGE_KEY, serializeData());
+    }, 800);
+  }
+
+  btnSave.addEventListener('click', () => {
+    const json = serializeData();
+    localStorage.setItem(STORAGE_KEY, json);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const name = boardName.textContent.toLowerCase().replace(/\s+/g, '-');
+    a.href = url;
+    a.download = `${name}-${stamp}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus('FILE SAVED');
+  });
+
+  btnLoad.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        loadFromSerialized(parsed);
+        localStorage.setItem(STORAGE_KEY, serializeData());
+        showStatus('LOADED');
+      } catch { showStatus('BAD FILE', false); }
+    };
+    reader.readAsText(file);
+    fileInput.value = '';
+  });
+
+  // ── Restore ──
+  (function restore() {
+    if (!db) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { loadFromSerialized(JSON.parse(saved)); } catch {}
+      } else {
+        // Try migrating from v1
+        const v1 = localStorage.getItem('midday-prep-board-v1');
+        if (v1) {
+          try {
+            const parsed = JSON.parse(v1);
+            const arr = parsed.cards || parsed;
+            // Map first 16 of 32 v1 cards
+            if (Array.isArray(arr)) {
+              for (let i = 0; i < Math.min(16, arr.length); i++) {
+                data[i].headline = (arr[i] && arr[i].headline) || '';
+                data[i].body     = (arr[i] && arr[i].body)     || '';
+                refreshBoardCard(i);
+              }
+              // Remaining v1 cards with content -> holdover
+              for (let i = 16; i < arr.length; i++) {
+                if (arr[i] && (arr[i].headline || arr[i].body)) {
+                  holdoverData.push({ headline: arr[i].headline, body: arr[i].body });
+                }
+              }
+              renderHoldover();
+              if (parsed.boardName) {
+                boardName.textContent = parsed.boardName;
+                localStorage.setItem(BOARD_NAME_KEY, parsed.boardName);
+              }
+            }
+          } catch {}
+        }
+        renderHoldover();
+      }
+      showStatus('LOCAL ONLY', false);
+      return;
+    }
+
+    // Try Firebase first
+    Promise.all([
+      db.ref(DB_PATH).once('value'),
+      db.ref(DB_HOLDOVER_PATH).once('value')
+    ]).then(([cardsSnap, holdoverSnap]) => {
+      const cards = cardsSnap.val();
+      const holdover = holdoverSnap.val();
+      if (Array.isArray(cards) && cards.some(c => c && (c.headline || c.body))) {
+        loadFromSerialized({ cards, holdover: holdover || [], boardName: boardName.textContent });
+        showStatus('SYNCED');
+      } else {
+        // Firebase empty, try localStorage
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            loadFromSerialized(JSON.parse(saved));
+            saveToFirebase();
+          } catch {}
+        } else {
+          renderHoldover();
+        }
+      }
+    }).catch(() => {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { loadFromSerialized(JSON.parse(saved)); } catch {}
+      } else {
+        renderHoldover();
+      }
+      showStatus('OFFLINE', false);
+    });
+  })();
+</script>
+</body>
+</html>
